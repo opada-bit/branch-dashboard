@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة متابعة افتتاح الفرع</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#F7F6F3;--surface:#FFFFFF;--surface2:#F0EEE9;
+  --border:#E4E1D9;--border2:#D6D3CA;
+  --text:#1C1B18;--text2:#6B6860;--text3:#9E9C96;
+  --green:#1A8F5E;--green-bg:#E6F5EE;
+  --amber:#B86D0F;--amber-bg:#FEF3E2;
+  --red:#C0392B;--red-bg:#FDECEA;
+  --blue:#2563EB;--blue-bg:#EFF4FF;
+  --wip:#7C3AED;--wip-bg:#F3EFFE;
+  --accent:#1A8F5E;
+  --radius:12px;--radius-sm:8px;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* NAV */
+.nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.nav-brand{font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px}
+.nav-brand i{color:var(--accent);font-size:18px}
+.nav-tabs{display:flex;gap:2px;background:var(--surface2);border-radius:var(--radius-sm);padding:3px}
+.nav-tab{font-size:13px;padding:6px 16px;border-radius:6px;cursor:pointer;color:var(--text2);border:none;background:transparent;font-family:inherit;display:flex;align-items:center;gap:6px;transition:all .15s}
+.nav-tab.active{background:var(--surface);color:var(--text);font-weight:500;box-shadow:var(--shadow)}
+.nav-tab i{font-size:14px}
+.nav-right{display:flex;align-items:center;gap:12px}
+.nav-date{font-size:12px;color:var(--text3)}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#ccc;display:inline-block;transition:background .3s}
+.sync-dot.ok{background:var(--green)}
+.sync-dot.err{background:var(--red)}
+.sync-dot.syncing{background:var(--amber);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sync-lbl{font-size:11px;color:var(--text3)}
+
+/* LAYOUT */
+.page{display:none;padding:24px 28px;max-width:1100px;margin:0 auto}
+.page.active{display:block}
+
+/* LOADING OVERLAY */
+.loading-overlay{position:fixed;inset:0;background:rgba(247,246,243,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:14px}
+.loading-overlay.hidden{display:none}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:14px;color:var(--text2)}
+
+/* KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;position:relative;overflow:hidden;box-shadow:var(--shadow)}
+.kpi::before{content:'';position:absolute;top:0;right:0;width:3px;height:100%}
+.kpi.blue::before{background:var(--blue)}.kpi.green::before{background:var(--green)}
+.kpi.amber::before{background:#D85A30}.kpi.red::before{background:var(--red)}
+.kpi.purple::before{background:var(--wip)}
+.kpi-label{font-size:11px;color:var(--text2);margin-bottom:8px;letter-spacing:.03em}
+.kpi-value{font-size:26px;font-weight:600;line-height:1;color:var(--text)}
+.kpi-foot{font-size:11px;color:var(--text3);margin-top:5px}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow)}
+.card-title{font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.mb14{margin-bottom:14px}
+
+/* RINGS */
+.ring-wrap{display:flex;align-items:center;gap:18px}
+.ring-divider{width:1px;height:80px;background:var(--border);flex-shrink:0}
+.ring-legend{flex:1;display:flex;flex-direction:column;gap:9px}
+.ring-row{display:flex;align-items:center;gap:8px}
+.ring-sq{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.ring-label{font-size:12px;color:var(--text)}
+.ring-pct{font-size:11px;color:var(--text3);margin-right:auto}
+.ring-num{font-size:12px;font-weight:600;color:var(--text)}
+
+/* SECTION BARS */
+.sec-bar-list{display:flex;flex-direction:column;gap:12px}
+.sec-bar-item{display:flex;align-items:center;gap:12px}
+.sec-bar-icon{width:30px;height:30px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sec-bar-info{flex:1;min-width:0}
+.sec-bar-name{font-size:12px;color:var(--text);margin-bottom:5px}
+.sec-bar-track{height:7px;background:var(--surface2);border-radius:3px;overflow:hidden;display:flex}
+.sec-bar-done{height:100%;background:var(--green);transition:width .5s}
+.sec-bar-wip{height:100%;background:var(--wip);transition:width .5s}
+.sec-bar-pct{font-size:12px;font-weight:600;min-width:34px;text-align:left}
+.sec-bar-count{font-size:11px;color:var(--text3);min-width:40px;text-align:left}
+
+/* CRIT GRID */
+.crit-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.crit-cell{background:var(--surface2);border-radius:var(--radius-sm);padding:13px 15px;border:1px solid var(--border)}
+.crit-cell-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.crit-cell-name{font-size:11px;color:var(--text2);line-height:1.4;max-width:80%}
+.crit-cell-pct{font-size:20px;font-weight:600;line-height:1}
+.crit-cell-sub{font-size:11px;color:var(--text3);margin-bottom:8px}
+.mini-track{height:4px;background:var(--border);border-radius:2px;overflow:hidden;display:flex}
+.mini-done{height:100%;background:var(--green);transition:width .5s}
+.mini-wip{height:100%;background:var(--wip);transition:width .5s}
+
+/* ALERTS */
+.alert{border-radius:var(--radius-sm);padding:13px 16px;display:flex;gap:10px;margin-bottom:10px;border:1px solid}
+.alert-icon{font-size:17px;flex-shrink:0;margin-top:1px}
+.alert-title{font-size:13px;font-weight:600;margin-bottom:4px}
+.alert-body{font-size:12px;line-height:1.8}
+.alert.red{background:var(--red-bg);border-color:#F0A8A3;color:#7B1D14}
+.alert.green{background:var(--green-bg);border-color:#86C9A8;color:#0D5C3A}
+
+.status-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:5px 12px;border-radius:20px}
+.db-legend-row{display:flex;align-items:center;gap:16px;margin-bottom:14px;flex-wrap:wrap}
+.db-leg-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
+.db-leg-sq{width:10px;height:10px;border-radius:2px}
+
+/* CHECKLIST */
+.cl-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.cl-title{font-size:22px;font-weight:600;color:var(--text)}
+.cl-sub{font-size:13px;color:var(--text2);margin-bottom:10px}
+.cl-progress-wrap{margin-bottom:20px}
+.cl-progress-labels{display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px}
+.cl-progress{height:8px;background:var(--border);border-radius:4px;overflow:hidden;display:flex}
+.cl-progress-done{height:100%;background:var(--green);transition:width .4s}
+.cl-progress-wip{height:100%;background:var(--wip);transition:width .4s}
+.reset-btn{font-size:12px;padding:7px 14px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface);color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px}
+.reset-btn:hover{background:var(--surface2)}
+
+.cl-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;overflow:hidden;box-shadow:var(--shadow)}
+.cl-sec-hdr{display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer;user-select:none}
+.cl-sec-hdr:hover{background:var(--surface2)}
+.cl-sec-ico{width:32px;height:32px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cl-sec-name{font-size:14px;font-weight:500;color:var(--text);flex:1}
+.cl-sec-badge{font-size:10px;padding:2px 9px;border-radius:20px;font-weight:600}
+.cl-sec-count{font-size:11px;color:var(--text3);min-width:52px;text-align:left}
+.cl-arrow{font-size:14px;color:var(--text3);transition:transform .2s;display:inline-block}
+.cl-arrow.open{transform:rotate(90deg)}
+.cl-items{display:none;flex-direction:column;padding:4px 16px 12px}
+.cl-items.open{display:flex}
+.group-label{font-size:10px;font-weight:700;color:var(--text3);padding:10px 8px 4px;letter-spacing:.08em;border-top:1px solid var(--border);margin-top:6px}
+.group-label:first-child{border-top:none;margin-top:0;padding-top:4px}
+
+/* ITEM */
+.cl-item{display:flex;align-items:flex-start;gap:10px;padding:8px 8px;border-radius:var(--radius-sm)}
+.cl-item-body{flex:1;min-width:0}
+.cl-item-text{font-size:13px;color:var(--text);line-height:1.5}
+.cl-item-hint{font-size:11px;color:var(--text3);margin-top:3px;line-height:1.5}
+.cl-item.status-done .cl-item-text{text-decoration:line-through;color:var(--text3)}
+.crit-badge{display:inline-block;font-size:10px;padding:1px 7px;border-radius:10px;background:#FAECE7;color:#993C1D;font-weight:600;margin-left:5px;vertical-align:middle}
+
+/* STATUS BUTTONS */
+.status-btns{display:flex;gap:5px;flex-shrink:0;margin-top:1px}
+.st-btn{border:1px solid var(--border2);border-radius:6px;padding:5px 11px;font-size:11px;font-weight:500;cursor:pointer;background:var(--surface2);color:var(--text2);font-family:inherit;display:flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap;position:relative}
+.st-btn i{font-size:12px}
+.st-btn:hover{background:var(--border)}
+.st-btn.active-wip{background:var(--wip-bg);border-color:#B89EF5;color:var(--wip)}
+.st-btn.active-done{background:var(--green-bg);border-color:#7EC8A4;color:var(--green)}
+.st-btn.saving::after{content:'';position:absolute;inset:0;border-radius:5px;background:rgba(255,255,255,.5)}
+
+/* NOTES */
+.note-toggle{background:none;border:none;cursor:pointer;font-size:11px;color:var(--text3);padding:2px 6px;border-radius:4px;font-family:inherit;display:inline-flex;align-items:center;gap:4px;margin-top:5px;transition:color .15s,background .15s}
+.note-toggle:hover{color:var(--text2);background:var(--border)}
+.note-toggle.has-note{color:var(--amber)}
+.note-box{display:none;margin-top:8px}
+.note-box.open{display:block}
+.note-textarea{width:100%;border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 10px;font-size:12px;font-family:'IBM Plex Sans Arabic',sans-serif;color:var(--text);background:var(--bg);resize:vertical;min-height:60px;line-height:1.6;outline:none;transition:border-color .15s}
+.note-textarea:focus{border-color:var(--accent)}
+.note-saved{font-size:10px;color:var(--green);margin-top:4px;display:none}
+.note-saved.show{display:block}
+
+/* RESPONSIVE */
+@media(max-width:900px){.kpi-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:768px){.nav{padding:0 16px}.page{padding:16px}.grid2{grid-template-columns:1fr}.crit-grid{grid-template-columns:1fr 1fr}.kpi-row{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.crit-grid{grid-template-columns:1fr 1fr}.status-btns{flex-direction:column;gap:3px}}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">جارٍ تحميل البيانات...</div>
+</div>
+
+<nav class="nav">
+  <div class="nav-brand"><i class="ti ti-building-store"></i>افتتاح الفرع الجديد</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="goTab('db')"><i class="ti ti-layout-dashboard"></i>الداشبورد</button>
+    <button class="nav-tab" onclick="goTab('cl')"><i class="ti ti-checklist"></i>قائمة التفقد</button>
+  </div>
+  <div class="nav-right">
+    <span class="sync-dot" id="sync-dot"></span>
+    <span class="sync-lbl" id="sync-lbl">جارٍ الاتصال...</span>
+    <span class="nav-date" id="nav-date"></span>
+  </div>
+</nav>
+
+<!-- DASHBOARD -->
+<div class="page active" id="page-db">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="font-size:22px;font-weight:600;color:var(--text)">لوحة متابعة الإنجاز</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:3px">مشترك — يتحدث فورياً لجميع المشاركين</div>
+    </div>
+    <div id="db-status-pill"></div>
+  </div>
+  <div class="kpi-row" id="db-kpis"></div>
+  <div class="db-legend-row">
+    <div class="db-leg-item"><div class="db-leg-sq" style="background:var(--green)"></div>تم الإنجاز</div>
+    <div class="db-leg-item"><div class="db-leg-sq" style="background:var(--wip)"></div>قيد العمل</div>
+    <div class="db-leg-item"><div class="db-leg-sq" style="background:var(--border)"></div>لم يبدأ</div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">الإنجاز الكلي <span id="lbl-overall" style="font-size:14px;font-weight:600;color:var(--text);text-transform:none;letter-spacing:0"></span></div>
+      <div class="ring-wrap"><canvas id="ring-overall" width="112" height="112"></canvas><div class="ring-divider"></div><div class="ring-legend" id="leg-overall"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">البنود الحرجة <span id="lbl-crit" style="font-size:14px;font-weight:600;color:var(--text);text-transform:none;letter-spacing:0"></span></div>
+      <div class="ring-wrap"><canvas id="ring-crit" width="112" height="112"></canvas><div class="ring-divider"></div><div class="ring-legend" id="leg-crit"></div></div>
+    </div>
+  </div>
+  <div class="card mb14"><div class="card-title">التقدم حسب القسم</div><div class="sec-bar-list" id="db-secbars"></div></div>
+  <div class="card"><div class="card-title">تفصيل البنود الحرجة</div><div class="crit-grid" id="db-critgrid"></div><div id="db-alerts"></div></div>
+</div>
+
+<!-- CHECKLIST -->
+<div class="page" id="page-cl">
+  <div class="cl-header">
+    <div><div class="cl-title">قائمة التفقد</div></div>
+    <button class="reset-btn" onclick="resetAll()"><i class="ti ti-refresh" style="font-size:13px"></i>إعادة تعيين</button>
+  </div>
+  <div class="cl-sub" id="cl-sub"></div>
+  <div class="cl-progress-wrap">
+    <div class="cl-progress-labels">
+      <span id="cl-prog-done-lbl" style="color:var(--green)"></span>
+      <span id="cl-prog-wip-lbl" style="color:var(--wip)"></span>
+    </div>
+    <div class="cl-progress"><div class="cl-progress-done" id="cl-prog-done"></div><div class="cl-progress-wip" id="cl-prog-wip"></div></div>
+  </div>
+  <div id="cl-sections"></div>
+</div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbwtJuPAhjT_ASDZeK4poL4FHnJaD_AlDp9ZNfXoKReoZHoW93UtXswRzo5veqon3vA0/exec';
+const POLL_INTERVAL = 15000; // refresh every 15 seconds
+
+const SECTIONS=[
+  {id:"net",name:"نقل الشبكة",icon:"ti-network",bg:"#E1F5EE",ic:"#0F6E56",bdg:"نقل",
+   groups:[
+    {l:"التخطيط المسبق",items:[
+      {t:"إمكانية نقل خط الإنترنت",n:"التواصل المبكر مع المزود — أسبوعان على الأقل",c:1},
+      {t:"تأكيد بقاء الـ Static IP بعد النقل",n:"تأكيد كتابي من المزود",c:1},
+      {t:"توثيق إعدادات WAN و LAN و VPN",n:"بالتنسيق مع محمد أمين",c:0},
+      {t:"Backup كامل من إعدادات الفايروول",n:"بالتنسيق مع محمد أمين — محلي + سحابي",c:1},
+      {t:"خطة IP Addressing للفرع الجديد",n:"Subnet، Gateway، DNS، DHCP Pool",c:0},
+      {t:"تحديد موعد النقل مع المزود",n:"خارج أوقات الذروة — يُفضل ليلاً",c:0},
+      {t:"تقليل مخاطر تغيير إعدادات الـ VPN",n:"مراجعة جميع الـ Tunnels المرتبطة",c:1},
+    ]},
+    {l:"يوم النقل",items:[
+      {t:"نقل الفايروول وضبط إعداداته في الموقع الجديد",c:1},
+      {t:"نقل الإنترنت والتحقق من الاتصال فور التركيب",c:0},
+      {t:"اختبار VPN واستعادة الاتصال بالفروع",c:1},
+    ]},
+    {l:"الاختبار والتوثيق",items:[
+      {t:"اختبار الإنترنت: السرعة والاستقرار",c:0},
+      {t:"اختبار VPN مع جميع المواقع المرتبطة",c:0},
+      {t:"اختبار POS والطابعات",c:0},
+      {t:"اختبار الكاميرات",c:0},
+      {t:"ربط IoT Box لقسم البيع الإلكتروني",c:0},
+      {t:"مخطط بياني محدّث للشبكة",n:"Topology، IP Table، Port Mapping",c:0},
+      {t:"توثيق جميع التغييرات التي تمت",c:0},
+    ]},
+  ]},
+  {id:"inet",name:"الإنترنت الجديد",icon:"ti-wifi",bg:"#E6F1FB",ic:"#185FA5",bdg:"جديد",
+   groups:[
+    {l:"التخطيط والاختيار",items:[
+      {t:"حصر جميع الأجهزة في الفرع",n:"POS، PC، كاميرات، طابعات، IoT",c:1},
+      {t:"تحديد سرعة الإنترنت المناسبة",c:0},
+      {t:"دراسة عروض مزودي الإنترنت",n:"السعر، السرعة، الاستقرار، الدعم الفني",c:0},
+      {t:"اختيار المزود ونوع الخط",c:0},
+      {t:"تقييم الحاجة إلى Static IP",n:"مطلوب إذا كان سيُربط VPN من الفرع",c:0},
+    ]},
+    {l:"التركيب والتوثيق",items:[
+      {t:"تحديد موعد التركيب مع المزود",n:"أسبوع قبل الافتتاح على الأقل",c:1},
+      {t:"متابعة عملية التركيب",c:0},
+      {t:"اختبار الإنترنت فور التركيب",n:"سرعة + استقرار 30 دقيقة",c:0},
+      {t:"توثيق بيانات الاتصال الكاملة",n:"Static IP، Gateway، DNS، رقم الدعم الفني",c:0},
+    ]},
+  ]},
+  {id:"lan",name:"الشبكة الداخلية",icon:"ti-server",bg:"#EAF3DE",ic:"#3B6D11",bdg:"بنية",
+   groups:[
+    {l:"الكابلات والنقاط",items:[
+      {t:"تمديد كابلات CAT6 لجميع النقاط",n:"لا تقاطع مع كابلات الكهرباء — الحد الأقصى 90م",c:1},
+      {t:"تركيب Faceplates على جميع النقاط",c:0},
+      {t:"ترقيم جميع نقاط الشبكة",n:"نظام موحد: الغرفة-الجدار-النقطة",c:0},
+    ]},
+    {l:"الكابينة والفايروول",items:[
+      {t:"تجهيز كابينة الشبكة",c:1},
+      {t:"تركيب Patch Panel وربط النقاط",c:0},
+      {t:"تركيب السويتشات وتوزيع المنافذ",c:0},
+      {t:"ملصقات على جميع المنافذ",c:0},
+      {t:"ترتيب الكابلات بـ Cable Managers",c:0},
+      {t:"تركيب UPS للكابينة",c:1},
+      {t:"تركيب الفايروول داخل الكابينة",c:1},
+      {t:"ضبط إعدادات WAN",n:"IP، Gateway، DNS",c:1},
+      {t:"ضبط LAN وتحديد IP Range",n:"DHCP Pool، Reserved IPs للأجهزة الثابتة",c:1},
+      {t:"إعداد VPN Tunnel مع المقر والفروع",c:1},
+      {t:"ضبط Firewall Rules وسياسات الأمان",c:0},
+      {t:"إعداد QoS لإعطاء أولوية لـ POS",c:0},
+      {t:"Backup إعدادات الفايروول",c:1},
+    ]},
+    {l:"الواي فاي والاختبار",items:[
+      {t:"تركيب Access Points في المواقع المناسبة",c:0},
+      {t:"إعداد Guest Network معزول للزوار",c:0},
+      {t:"فحص جميع نقاط الشبكة بعد التركيب",c:0},
+      {t:"اختبار DHCP لجميع الأجهزة",c:0},
+      {t:"اختبار الاتصال بالمقر عبر VPN",c:1},
+      {t:"مخطط الشبكة الداخلية الكامل",n:"Rack Diagram، Logical Topology، IP Table",c:1},
+      {t:"توثيق جميع إعدادات الشبكة",c:0},
+    ]},
+  ]},
+  {id:"hw",name:"الأجهزة والمعدات",icon:"ti-device-desktop",bg:"#FAEEDA",ic:"#854F0B",bdg:"أجهزة",
+   groups:[
+    {l:"حصر وشراء",items:[
+      {t:"قائمة بجميع الأجهزة المطلوبة",n:"POS، PC، طابعات، شاشات، UPS",c:1},
+      {t:"مقارنة عروض الأسعار",c:0},
+      {t:"استلام الأجهزة والتحقق من المواصفات",c:0},
+    ]},
+    {l:"تركيب واختبار",items:[
+      {t:"تركيب أجهزة POS وتهيئتها",n:"IP ثابت، ربط بقاعدة البيانات",c:0},
+      {t:"تركيب الطابعات وربطها بالشبكة",c:0},
+      {t:"تثبيت شاشات العمل",c:0},
+      {t:"تركيب وتشغيل UPS",c:0},
+      {t:"اختبار شامل لأجهزة POS",n:"مبيعات، إلغاء، خصومات، دفع إلكتروني",c:1},
+      {t:"اختبار الطابعات",c:0},
+      {t:"اختبار أجهزة الدفع والباركود",c:0},
+    ]},
+  ]},
+  {id:"cam",name:"نظام المراقبة",icon:"ti-camera",bg:"#FBEAF0",ic:"#993556",bdg:"أمن",
+   groups:[
+    {l:"",items:[
+      {t:"مخطط تغطية الكاميرات قبل التركيب",n:"مداخل، صندوق، مخازن، مناطق حيوية",c:1},
+      {t:"تركيب الكاميرات وتوجيهها",c:0},
+      {t:"تركيب NVR/DVR وتوصيله بالشبكة",c:0},
+      {t:"ضبط إعدادات التسجيل",c:0},
+      {t:"اختبار الكاميرات ليلاً ونهاراً",c:1},
+      {t:"ربط المراقبة بالمقر للمشاهدة عن بعد",c:0},
+      {t:"إعداد صلاحيات الوصول",c:0},
+      {t:"التحقق من مدة الاحتفاظ بالتسجيلات",c:0},
+    ]},
+  ]},
+  {id:"sys",name:"الأنظمة والبرمجيات",icon:"ti-settings",bg:"#EEEDFE",ic:"#534AB7",bdg:"أنظمة",
+   groups:[
+    {l:"الأنظمة الرئيسية",items:[
+      {t:"تثبيت وتفعيل نظام POS",c:1},
+      {t:"ربط الفرع بنظام ERP",c:1},
+      {t:"إعداد الحسابات والصلاحيات",n:"مبدأ الحد الأدنى — كل موظف ما يحتاجه فقط",c:0},
+      {t:"ربط IoT Box للبيع الإلكتروني",c:0},
+      {t:"إعداد الطابعات ضمن الأنظمة",c:0},
+    ]},
+    {l:"النسخ الاحتياطي والأمان",items:[
+      {t:"إعداد Backup تلقائي للبيانات",n:"محلي + سحابي مع جدول زمني واضح",c:1},
+      {t:"تثبيت مكافحة الفيروسات",c:0},
+      {t:"تحديثات نظام التشغيل قبل الافتتاح",c:0},
+      {t:"اختبار استعادة البيانات من النسخة",n:"النسخة غير المختبرة ليست نسخة احتياطية",c:0},
+    ]},
+    {l:"الاختبار المتكامل",items:[
+      {t:"اختبار دورة البيع الكاملة",n:"من الطلب حتى الإيصال",c:1},
+      {t:"اختبار التقارير والإحصائيات",c:0},
+      {t:"اختبار المزامنة مع المقر",n:"المخزون، العروض، الأسعار",c:0},
+      {t:"اختبار Offline Mode",c:0},
+    ]},
+  ]},
+  {id:"sec",name:"الأمن التقني",icon:"ti-shield-lock",bg:"#FCEBEB",ic:"#A32D2D",bdg:"أمن",
+   groups:[
+    {l:"سياسات الوصول",items:[
+      {t:"تطبيق سياسة كلمات المرور على الجميع",c:1},
+      {t:"تفعيل قفل الشاشة التلقائي",c:0},
+      {t:"تقييد USB على أجهزة POS",c:0},
+      {t:"مراجعة صلاحيات المستخدمين",n:"حذف الحسابات التجريبية",c:1},
+    ]},
+    {l:"الامتثال والتوثيق",items:[
+      {t:"امتثال أنظمة الدفع لـ PCI-DSS",c:1},
+      {t:"توثيق الأصول التقنية (Asset Register)",n:"الاسم، الموديل، الرقم التسلسلي، الـ IP",c:0},
+      {t:"وضع إجراء للتعامل مع الحوادث التقنية",c:0},
+    ]},
+  ]},
+  {id:"doc",name:"التوثيق والتسليم",icon:"ti-clipboard-list",bg:"#F1EFE8",ic:"#5F5E5A",bdg:"توثيق",
+   groups:[
+    {l:"التوثيق الشامل",items:[
+      {t:"مخطط شبكة كامل (Logical + Physical)",c:1},
+      {t:"جدول IP لجميع الأجهزة",c:0},
+      {t:"Rack Diagram لتوزيع الكابينة",c:0},
+      {t:"توثيق إعدادات الفايروول والشبكة",c:0},
+      {t:"قائمة الحسابات وبيانات الدخول (آمنة)",c:1},
+      {t:"Asset Register للفرع",c:0},
+    ]},
+    {l:"التسليم والفريق",items:[
+      {t:"تدريب الفريق على الاستخدام اليومي",n:"POS، الطابعات، إجراءات الأعطال",c:0},
+      {t:"دليل مرجعي مبسط للفريق",n:"أرقام الدعم الفني، الإجراءات الشائعة",c:0},
+      {t:"تسليم رسمي لمدير الفرع موثق",c:1},
+      {t:"جدولة أول زيارة صيانة وقائية",n:"بعد أسبوعين من الافتتاح",c:0},
+    ]},
+  ]},
+];
+
+// ── State ──
+const statuses={};
+const notes={};
+const K=(sid,t)=>sid+'|'+t;
+const getStatus=(sid,t)=>statuses[K(sid,t)]||'none';
+
+// ── Sync helpers ──
+function setSyncState(state){
+  const dot=document.getElementById('sync-dot');
+  const lbl=document.getElementById('sync-lbl');
+  dot.className='sync-dot '+state;
+  lbl.textContent=state==='ok'?'متزامن':state==='syncing'?'جارٍ الحفظ...':state==='err'?'خطأ في الاتصال':'جارٍ الاتصال...';
+}
+
+async function fetchAll(){
+  try{
+    setSyncState('syncing');
+    const r=await fetch(API+'?t='+Date.now());
+    const data=await r.json();
+    let changed=false;
+    Object.entries(data).forEach(([k,v])=>{
+      if(statuses[k]!==(v.status||'none')){statuses[k]=v.status||'none';changed=true;}
+      if(notes[k]!==(v.note||'')){notes[k]=v.note||'';changed=true;}
+    });
+    setSyncState('ok');
+    document.getElementById('loading-overlay').classList.add('hidden');
+    if(changed){refreshUI();}
+  }catch(e){
+    setSyncState('err');
+    document.getElementById('loading-overlay').classList.add('hidden');
+  }
+}
+
+async function pushItem(sid,t){
+  const k=K(sid,t);
+  setSyncState('syncing');
+  try{
+    await fetch(API,{
+      method:'POST',
+      body:JSON.stringify({key:k,status:statuses[k]||'none',note:notes[k]||''}),
+    });
+    setSyncState('ok');
+  }catch(e){setSyncState('err');}
+}
+
+// ── Stats ──
+function sectionStats(s){
+  const items=s.groups.flatMap(g=>g.items);
+  const tot=items.length;
+  const dn=items.filter(i=>getStatus(s.id,i.t)==='done').length;
+  const wip=items.filter(i=>getStatus(s.id,i.t)==='wip').length;
+  const ct=items.filter(i=>i.c).length;
+  const cd=items.filter(i=>i.c&&getStatus(s.id,i.t)==='done').length;
+  const cw=items.filter(i=>i.c&&getStatus(s.id,i.t)==='wip').length;
+  return{tot,dn,wip,ct,cd,cw,
+    pctDone:tot?Math.round(dn/tot*100):0,
+    pctWip:tot?Math.round(wip/tot*100):0,
+    cpctDone:ct?Math.round(cd/ct*100):0,
+    cpctWip:ct?Math.round(cw/ct*100):0};
+}
+function globalStats(){
+  const all=SECTIONS.flatMap(s=>s.groups.flatMap(g=>g.items.map(i=>({sid:s.id,...i}))));
+  const tot=all.length;
+  const dn=all.filter(i=>getStatus(i.sid,i.t)==='done').length;
+  const wip=all.filter(i=>getStatus(i.sid,i.t)==='wip').length;
+  const ct=all.filter(i=>i.c).length;
+  const cd=all.filter(i=>i.c&&getStatus(i.sid,i.t)==='done').length;
+  const cw=all.filter(i=>i.c&&getStatus(i.sid,i.t)==='wip').length;
+  return{tot,dn,wip,ct,cd,cw,
+    pctDone:tot?Math.round(dn/tot*100):0,
+    pctWip:tot?Math.round(wip/tot*100):0,
+    cpctDone:ct?Math.round(cd/ct*100):0,
+    cpctWip:ct?Math.round(cw/ct*100):0};
+}
+
+// ── Tabs ──
+function goTab(id){
+  document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('active',['db','cl'][i]===id));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(id==='db') renderDashboard();
+}
+
+// ── Charts ──
+const charts={};
+function colorFor(pct,type='main'){
+  if(type==='text') return pct>=75?'#0D5C3A':pct>=40?'#7A4A0A':'#7B1D14';
+  return pct>=75?'#1A8F5E':pct>=40?'#D97706':'#C0392B';
+}
+function drawRing(id,dn,wip,tot,legId,lblId){
+  const pctDone=tot?Math.round(dn/tot*100):0;
+  const pctWip=tot?Math.round(wip/tot*100):0;
+  const rem=Math.max(0,tot-dn-wip);
+  document.getElementById(lblId).textContent=pctDone+'%';
+  document.getElementById(legId).innerHTML=[
+    {sq:'#1A8F5E',l:'تم الإنجاز',n:dn,p:pctDone+'%'},
+    {sq:'#7C3AED',l:'قيد العمل',n:wip,p:pctWip+'%'},
+    {sq:'#E4E1D9',l:'لم يبدأ',n:rem,p:(100-pctDone-pctWip)+'%'},
+  ].map(r=>`<div class="ring-row"><span class="ring-sq" style="background:${r.sq}"></span><span class="ring-label">${r.l}</span><span class="ring-pct">${r.p}</span><span class="ring-num">${r.n}</span></div>`).join('');
+  const data=[dn,wip,rem];
+  const colors=['#1A8F5E','#7C3AED','#E4E1D9'];
+  if(charts[id]){charts[id].data.datasets[0].data=data;charts[id].update('none');return;}
+  const ctx=document.getElementById(id).getContext('2d');
+  charts[id]=new Chart(ctx,{
+    type:'doughnut',
+    data:{datasets:[{data,backgroundColor:colors,borderWidth:0,hoverOffset:3}]},
+    options:{responsive:false,cutout:'73%',plugins:{legend:{display:false},tooltip:{enabled:false}},animation:{duration:400}},
+    plugins:[{id:'c',afterDraw(ch){
+      const{ctx:c,chartArea:{left,top,right,bottom}}=ch;
+      const cx=(left+right)/2,cy=(top+bottom)/2;
+      c.save();c.textAlign='center';c.textBaseline='middle';
+      c.font='600 21px "IBM Plex Sans Arabic",sans-serif';c.fillStyle='#1C1B18';
+      c.fillText(pctDone+'%',cx,cy-7);
+      c.font='400 11px "IBM Plex Sans Arabic",sans-serif';c.fillStyle='#9E9C96';
+      c.fillText(dn+'/'+tot,cx,cy+12);c.restore();
+    }}]
+  });
+}
+
+// ── Dashboard ──
+function renderDashboard(){
+  const g=globalStats();
+  const sc=g.pctDone>=75?'#0D5C3A':g.pctDone>=40?'#7A4A0A':'#7B1D14';
+  const sb=g.pctDone>=75?'#E6F5EE':g.pctDone>=40?'#FEF3E2':'#FDECEA';
+  const si=g.pctDone>=75?'ti-circle-check':g.pctDone>=40?'ti-clock':'ti-alert-triangle';
+  const st=g.pctDone>=75?'على المسار الصحيح':g.pctDone>=40?'تقدم معتدل':'يحتاج اهتمام';
+  document.getElementById('db-status-pill').innerHTML=`<span class="status-pill" style="background:${sb};color:${sc}"><i class="ti ${si}" style="font-size:13px"></i>${st}</span>`;
+  const cc=g.cpctDone>=75?'#0D5C3A':g.cpctDone>=50?'#7A4A0A':'#7B1D14';
+  document.getElementById('db-kpis').innerHTML=[
+    {l:'إجمالي البنود',v:g.tot,f:`${g.dn} منجز — ${g.wip} قيد العمل — ${g.tot-g.dn-g.wip} لم يبدأ`,cls:'blue'},
+    {l:'نسبة الإنجاز',v:g.pctDone+'%',f:'من القائمة الكاملة',cls:'green',vc:colorFor(g.pctDone,'text')},
+    {l:'قيد العمل',v:g.wip,f:`${g.pctWip}% من إجمالي البنود`,cls:'purple',vc:'#7C3AED'},
+    {l:'البنود الحرجة',v:g.ct,f:`${g.cd} منجزة — ${g.cw} قيد العمل`,cls:'amber'},
+    {l:'إنجاز الحرجة',v:g.cpctDone+'%',f:'الأعلى أولوية',cls:'red',vc:cc},
+  ].map(k=>`<div class="kpi ${k.cls}"><div class="kpi-label">${k.l}</div><div class="kpi-value" ${k.vc?`style="color:${k.vc}"`:''}>${k.v}</div><div class="kpi-foot">${k.f}</div></div>`).join('');
+  drawRing('ring-overall',g.dn,g.wip,g.tot,'leg-overall','lbl-overall');
+  drawRing('ring-crit',g.cd,g.cw,g.ct,'leg-crit','lbl-crit');
+  document.getElementById('db-secbars').innerHTML=SECTIONS.map(s=>{
+    const x=sectionStats(s);const tc=colorFor(x.pctDone,'text');
+    return`<div class="sec-bar-item">
+      <div class="sec-bar-icon" style="background:${s.bg}"><i class="ti ${s.icon}" style="font-size:14px;color:${s.ic}"></i></div>
+      <div class="sec-bar-info"><div class="sec-bar-name">${s.name}</div>
+        <div class="sec-bar-track"><div class="sec-bar-done" style="width:${x.pctDone}%"></div><div class="sec-bar-wip" style="width:${x.pctWip}%"></div></div>
+      </div>
+      <div class="sec-bar-pct" style="color:${tc}">${x.pctDone}%</div>
+      <div class="sec-bar-count">${x.dn}/${x.tot}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('db-critgrid').innerHTML=SECTIONS.filter(s=>sectionStats(s).ct>0).map(s=>{
+    const x=sectionStats(s);const tc=colorFor(x.cpctDone,'text');
+    return`<div class="crit-cell">
+      <div class="crit-cell-top"><div class="crit-cell-name">${s.name}</div><div class="crit-cell-pct" style="color:${tc}">${x.cpctDone}%</div></div>
+      <div class="crit-cell-sub">${x.cd} منجز — ${x.cw} قيد العمل — ${x.ct-x.cd-x.cw} لم يبدأ</div>
+      <div class="mini-track"><div class="mini-done" style="width:${x.cpctDone}%"></div><div class="mini-wip" style="width:${x.cpctWip}%"></div></div>
+    </div>`;
+  }).join('');
+  const warn=SECTIONS.filter(s=>{const x=sectionStats(s);return x.ct>0&&x.cpctDone<50&&x.cpctWip===0;});
+  const ok=SECTIONS.filter(s=>{const x=sectionStats(s);return x.ct>0&&x.cpctDone===100;});
+  let al='';
+  if(warn.length) al+=`<div class="alert red"><i class="ti ti-alert-triangle alert-icon"></i><div><div class="alert-title">أقسام تحتاج اهتمام — حرجة أقل من 50%</div><div class="alert-body">${warn.map(s=>{const x=sectionStats(s);const p=s.groups.flatMap(g=>g.items).filter(i=>i.c&&getStatus(s.id,i.t)==='none').map(i=>i.t);return`<b>${s.name}</b> (${x.cpctDone}%) ← ${p.join('، ')}`;}).join('<br>')}</div></div></div>`;
+  if(ok.length) al+=`<div class="alert green"><i class="ti ti-circle-check alert-icon"></i><div><div class="alert-title">اكتملت البنود الحرجة بالكامل في</div><div class="alert-body">${ok.map(s=>s.name).join(' · ')}</div></div></div>`;
+  document.getElementById('db-alerts').innerHTML=al;
+}
+
+// ── Checklist UI ──
+function refreshUI(){
+  // update all item buttons & styles
+  SECTIONS.forEach(s=>{
+    s.groups.forEach(g=>{
+      g.items.forEach(it=>{
+        const ik=K(s.id,it.t);
+        const sk=ik.replace(/[|]/g,'_');
+        const st=getStatus(s.id,it.t);
+        const row=document.getElementById('row-'+sk);
+        if(!row) return;
+        const [btnWip,btnDone]=row.querySelectorAll('.st-btn');
+        btnWip.classList.toggle('active-wip',st==='wip');
+        btnDone.classList.toggle('active-done',st==='done');
+        row.classList.toggle('status-done',st==='done');
+        // notes
+        const ta=document.getElementById('ta-'+sk);
+        if(ta&&ta.value!==notes[ik]) ta.value=notes[ik]||'';
+        const ntBtn=row.querySelector('.note-toggle');
+        if(ntBtn) ntBtn.classList.toggle('has-note',!!(notes[ik]));
+      });
+    });
+    updateCount(s.id);
+  });
+  updateProgress();
+  if(document.getElementById('page-db').classList.contains('active')) renderDashboard();
+}
+
+function buildChecklist(){
+  const cont=document.getElementById('cl-sections');
+  SECTIONS.forEach(s=>{
+    const div=document.createElement('div');div.className='cl-section';
+    div.innerHTML=`
+      <div class="cl-sec-hdr" onclick="toggleSec('${s.id}')">
+        <div class="cl-sec-ico" style="background:${s.bg}"><i class="ti ${s.icon}" style="font-size:15px;color:${s.ic}"></i></div>
+        <div class="cl-sec-name">${s.name}</div>
+        <span class="cl-sec-badge" style="background:${s.bg};color:${s.ic}">${s.bdg}</span>
+        <span class="cl-sec-count" id="cnt-${s.id}"></span>
+        <i class="ti ti-chevron-right cl-arrow" id="arr-${s.id}"></i>
+      </div>
+      <div class="cl-items" id="items-${s.id}"></div>`;
+    const box=div.querySelector('#items-'+s.id);
+    s.groups.forEach(g=>{
+      if(g.l){const lb=document.createElement('div');lb.className='group-label';lb.textContent=g.l;box.appendChild(lb);}
+      g.items.forEach(it=>{
+        const ik=K(s.id,it.t);
+        const sk=ik.replace(/[|]/g,'_');
+        const safeT=it.t.replace(/'/g,"\\'");
+        const row=document.createElement('div');
+        row.className='cl-item';row.id='row-'+sk;
+        row.innerHTML=`
+          <div class="status-btns">
+            <button class="st-btn" onclick="setStatus('${s.id}','${safeT}','wip',this)" type="button"><i class="ti ti-loader"></i>قيد العمل</button>
+            <button class="st-btn" onclick="setStatus('${s.id}','${safeT}','done',this)" type="button"><i class="ti ti-circle-check"></i>تم الإنجاز</button>
+          </div>
+          <div class="cl-item-body">
+            <div class="cl-item-text">${it.c?'<span class="crit-badge">حرج</span>':''} ${it.t}</div>
+            ${it.n?`<div class="cl-item-hint">${it.n}</div>`:''}
+            <button class="note-toggle" onclick="toggleNote('${ik}',this)" type="button"><i class="ti ti-pencil"></i>إضافة ملاحظة</button>
+            <div class="note-box" id="nb-${sk}">
+              <textarea class="note-textarea" id="ta-${sk}" placeholder="اكتب ملاحظتك هنا..." oninput="onNoteInput('${ik}',this)"></textarea>
+              <div class="note-saved" id="ns-${sk}">✓ تم الحفظ</div>
+            </div>
+          </div>`;
+        box.appendChild(row);
+      });
+    });
+    cont.appendChild(div);
+    updateCount(s.id);
+  });
+}
+
+function toggleSec(id){
+  document.getElementById('items-'+id).classList.toggle('open');
+  document.getElementById('arr-'+id).classList.toggle('open');
+}
+
+async function setStatus(sid,t,newSt,btn){
+  const ik=K(sid,t);
+  const current=statuses[ik]||'none';
+  const next=current===newSt?'none':newSt;
+  statuses[ik]=next;
+  const sk=ik.replace(/[|]/g,'_');
+  const row=document.getElementById('row-'+sk);
+  const [btnWip,btnDone]=row.querySelectorAll('.st-btn');
+  btnWip.classList.toggle('active-wip',next==='wip');
+  btnDone.classList.toggle('active-done',next==='done');
+  row.classList.toggle('status-done',next==='done');
+  updateCount(sid);updateProgress();
+  if(document.getElementById('page-db').classList.contains('active')) renderDashboard();
+  await pushItem(sid,t);
+}
+
+function toggleNote(ik,btn){
+  const sk=ik.replace(/[|]/g,'_');
+  const box=document.getElementById('nb-'+sk);
+  const isOpen=box.classList.toggle('open');
+  btn.querySelector('i').className=isOpen?'ti ti-chevron-up':'ti ti-pencil';
+  if(isOpen) box.querySelector('textarea').focus();
+}
+
+const noteTimers={};
+function onNoteInput(ik,ta){
+  notes[ik]=ta.value;
+  const sk=ik.replace(/[|]/g,'_');
+  const btn=ta.closest('.cl-item-body').querySelector('.note-toggle');
+  if(btn){btn.classList.toggle('has-note',!!ta.value);btn.innerHTML=`<i class="ti ti-pencil"></i>${ta.value?'تعديل الملاحظة':'إضافة ملاحظة'}`;}
+  clearTimeout(noteTimers[ik]);
+  noteTimers[ik]=setTimeout(async()=>{
+    const sid=ik.split('|')[0];
+    const t=ik.slice(sid.length+1);
+    await pushItem(sid,t);
+    const savedEl=document.getElementById('ns-'+sk);
+    if(savedEl){savedEl.classList.add('show');setTimeout(()=>savedEl.classList.remove('show'),2000);}
+  },800);
+}
+
+function updateCount(sid){
+  const s=SECTIONS.find(x=>x.id===sid);const x=sectionStats(s);
+  const el=document.getElementById('cnt-'+sid);
+  if(el) el.textContent=`${x.dn}✓ ${x.wip}●`;
+}
+function updateProgress(){
+  const g=globalStats();
+  document.getElementById('cl-prog-done').style.width=g.pctDone+'%';
+  document.getElementById('cl-prog-wip').style.width=g.pctWip+'%';
+  document.getElementById('cl-prog-done-lbl').textContent=`✓ ${g.dn} منجز (${g.pctDone}%)`;
+  document.getElementById('cl-prog-wip-lbl').textContent=`● ${g.wip} قيد العمل (${g.pctWip}%)`;
+  document.getElementById('cl-sub').textContent=`${g.dn} من ${g.tot} بند مكتمل — ${g.wip} قيد العمل — ${g.tot-g.dn-g.wip} لم يبدأ`;
+}
+
+async function resetAll(){
+  if(!confirm('إعادة تعيين جميع البنود للجميع؟')) return;
+  SECTIONS.forEach(s=>s.groups.forEach(g=>g.items.forEach(it=>{
+    const ik=K(s.id,it.t);statuses[ik]='none';notes[ik]='';
+  })));
+  refreshUI();
+  // push all resets
+  const all=SECTIONS.flatMap(s=>s.groups.flatMap(g=>g.items.map(i=>({sid:s.id,t:i.t}))));
+  for(const item of all){ await pushItem(item.sid,item.t); }
+}
+
+// ── Init ──
+buildChecklist();
+updateProgress();
+renderDashboard();
+document.getElementById('nav-date').textContent=new Date().toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+fetchAll();
+setInterval(fetchAll, POLL_INTERVAL);
+</script>
+</body>
+</html>
